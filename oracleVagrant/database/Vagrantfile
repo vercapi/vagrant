@@ -1,0 +1,41 @@
+# -*- mode: ruby -*-
+
+Vagrant.configure(2) do |config|
+
+  # Name of the box
+  config.vm.box = "oel7"
+
+    config.vm.provision "shell",
+                      inline: "yum -y upgrade"
+
+  config.vm.provision "shell",
+                      inline: "yum -y install yum-utils wget.x86_64 bzip2.x86_64 kernel-uek-devel-3.8.13-98.1.2.el7uek.x86_64"
+
+  
+  # Folder with Oracle installation files
+  config.vm.synced_folder "/mnt/localData/stage", "/stage", owner: "oracle", group: "oinstall"
+  # Get the response files
+  config.vm.synced_folder "rsp_files", "/stage/rsp_files", owner: "oracle", group: "oinstall"
+
+  # Provision package
+  config.vm.synced_folder "packages", "/home/vagrant/packages"
+  
+  config.vm.provision "shell",
+                      inline: "sudo yum-config-manager --enable ol7_optional_latest"
+
+  config.vm.provision "shell",
+                      inline: "sudo yum-config-manager --enable ol7_addons"
+  
+  config.vm.provision "shell",
+                      inline: "wget -O install_salt.sh https://bootstrap.saltstack.com && sudo sh install_salt.sh -M -P -X"
+
+  # Folder with salt configuration files
+  config.vm.synced_folder "salt", "/srv/salt"
+
+  #Provision salt
+  # config.vm.provision :salt do |salt|
+  #   salt.no_minion = true
+  #   salt.run_highstate = true
+  # end
+    
+end

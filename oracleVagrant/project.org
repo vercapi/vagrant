@@ -1,0 +1,109 @@
+#+TITLE: Vagrant for Oracle VMs
+
+* Database bootstrap
+
+  See the database subfolder.
+
+  This vagrant project will do a fresh database install onto a virtualbox vm.
+
+  This was only tested on OEL7.1.
+
+** Prerequisites/Configuration
+
+   - You need to have vagrant Installed
+
+   - You need to have VirtualBox installed
+
+   - VirtualBoxMachine
+     - At lest 1.5Gb needs to be available for the database
+     - saltstack bootstrap needs to be compatible with the os that is running
+     - If you are not using OEL you might need to check the files database/VagrantFile and 
+     - Best to install guest additions for the version of virtualbox you are using
+     - vagrant user must exist
+
+   - Provide the database install files
+     - Unzip the files in a directory called 'database'
+     - In database/VagrantFile change "/mnt/localData/stage" to the directory where the 'database' folder is located
+
+   - Change the rsp file
+     - If you change things like the install directory you will need to update the file 'database/salt/oracle/init.sls'.
+
+** Run it
+
+   In the datbase folder vagrant up
+
+   Everything will be installed and the database. Note that running vagrant destroy will remove the installation.
+  
+* Vagrant
+** Vagrant system configuration
+
+   I only do this because my disk drive is formatted ntfs and vagrant requires that insecure_private_key has sepecific acess righrts which isn't possible on ntfs udner linux
+   In addition my home directory is on the ssd which doesn't have space to hold the entire vm not even in the tmp.
+
+   So the actual vagrant home directory is still at its original location: ~/.vagrant.d
+   
+   #+BEGIN_SRC sh
+     mkdir /mnt/localData/vagrant
+     ln -s /mnt/localData/vagrant/boxes $VAGRANT_HOME/boxes
+     ln -s /mnt/localData/vagrant/tmp $VAGRANT_HOME/tmp
+   #+END_SRC
+
+   #+RESULTS:
+
+** Create a base box
+
+   Apperantly there is some problem with jinja2 library dependencies at least within OEL 7.0, upgrading to 7.1 and enabling additional repositories resolves that issue.
+
+   [[http://docs.vagrantup.com/v2/virtualbox/boxes.html][Documentation]]
+
+   - Install guest additions
+   - create account vagrant that can login with ssh key found in $VAGRANT_HOME
+
+     #+BEGIN_SRC sh
+     useradd vagrant
+     passwd vagrant
+     #+END_SRC
+
+     sudo visudo -f /etc/sudoers.d/vagrant 
+       Add line: vagrant ALL=(ALL) NOPASSWD:ALL
+     
+     If you don't do the followin you will encounter 'sorry, you must have a tty to run sudo'
+     sudo visudo -f /etc/sudoers  
+       Comment following lines
+       #Defaults    requiretty
+       #Defaults   !visiblepw
+     
+
+   - Setup SSH key for the vagrant user
+     #+BEGIN_SRC sh
+       mkdir -p /home/vagrant/.ssh
+       chmod 0700 /home/vagrant/.ssh
+       wget --no-check-certificate https://raw.github.com/mitchellh/vagrant/master/keys/vagrant.pub -O /home/vagrant/.ssh/authorized_keys
+       chmod 0600 /home/vagrant/.ssh/authorized_keys
+       chown -R vagrant /home/vagrant/.ssh
+     #+END_SRC
+
+   - package the box
+     #+BEGIN_SRC sh
+     vagrant package --base 11gR2 --output /mnt/localData/vagrant/box_repo/OraceLinux7.box
+     #+END_SRC
+
+     Where 11gR2 is the name of a Virtualbox inside the virtualbox UI.
+
+** Create a project
+
+   Initiates a project and creates a 'Vagrant' file in yout project
+   #+BEGIN_SRC sh
+   # Create all the base files
+   vagrant init
+   # create a vagrant box named oel7 inside this vagrant project based on the file provided.
+   vagrant box add oel7 /mnt/localData/vagrant/box_repo/OraceLinux7.box 
+   #+END_SRC
+
+*** TODO Get SaltStack to work
+
+    saltstack_setup.sh will launch a bootstrap script to install salt stack.
+    [[http://docs.saltstack.com/en/latest/topics/tutorials/salt_bootstrap.html][Documenation]] on the bootstrap process.
+
+    saltstack should be run automatically by vagrant command not by the shell command
+
